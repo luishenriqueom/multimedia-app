@@ -1,83 +1,132 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { createContext, useContext, useState, useCallback } from "react"
+import type React from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
+import { apiFetch, setToken } from "@/lib/api";
 
 export interface User {
-  id: string
-  email: string
-  username: string
-  avatar?: string
-  bio?: string
-  createdAt: Date
+  id: number | string;
+  email: string;
+  username?: string;
+  avatar?: string;
+  bio?: string | null;
+  createdAt?: Date;
 }
 
 interface AuthContextType {
-  user: User | null
-  isLoading: boolean
-  login: (email: string, password: string) => Promise<void>
-  signup: (email: string, username: string, password: string) => Promise<void>
-  logout: () => void
-  updateProfile: (updates: Partial<User>) => void
+  user: User | null;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, username: string, password: string) => Promise<void>;
+  logout: () => void;
+  updateProfile: (updates: Partial<User>) => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // on mount, try to load current user if token exists
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        const me = await apiFetch("/users/me", { method: "GET" });
+        if (!mounted) return;
+        const normalized: User = {
+          id: me.id,
+          email: me.email,
+          username: me.full_name || me.email.split("@")[0],
+          bio: me.bio ?? null,
+          createdAt: me.created_at ? new Date(me.created_at) : undefined,
+        };
+        setUser(normalized);
+      } catch (err) {
+        // no token or invalid token — ignore
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      // Placeholder: will connect to database
-      const mockUser: User = {
-        id: "1",
-        email,
-        username: email.split("@")[0],
-        createdAt: new Date(),
-      }
-      setUser(mockUser)
+      const data = await apiFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      const token = data?.access_token;
+      if (!token) throw new Error("No token received");
+      setToken(token);
+      // fetch user
+      const me = await apiFetch("/users/me", { method: "GET" });
+      const normalized: User = {
+        id: me.id,
+        email: me.email,
+        username: me.full_name || me.email.split("@")[0],
+        bio: me.bio ?? null,
+        createdAt: me.created_at ? new Date(me.created_at) : undefined,
+      };
+      setUser(normalized);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [])
+  }, []);
 
-  const signup = useCallback(async (email: string, username: string, password: string) => {
-    setIsLoading(true)
-    try {
-      // Placeholder: will connect to database
-      const newUser: User = {
-        id: Date.now().toString(),
-        email,
-        username,
-        createdAt: new Date(),
+  const signup = useCallback(
+    async (email: string, username: string, password: string) => {
+      setIsLoading(true);
+      try {
+        // backend expects full_name field
+        await apiFetch("/auth/register", {
+          method: "POST",
+          body: JSON.stringify({ email, password, full_name: username }),
+        });
+        // after register, auto-login
+        await login(email, password);
+      } finally {
+        setIsLoading(false);
       }
-      setUser(newUser)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+    },
+    [login]
+  );
 
   const logout = useCallback(() => {
-    setUser(null)
-  }, [])
+    setToken(null);
+    setUser(null);
+  }, []);
 
   const updateProfile = useCallback((updates: Partial<User>) => {
-    setUser((prev) => (prev ? { ...prev, ...updates } : null))
-  }, [])
+    setUser((prev) => (prev ? { ...prev, ...updates } : null));
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout, updateProfile }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, login, signup, logout, updateProfile }}
+    >
       {children}
     </AuthContext.Provider>
-  )
+  );
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within AuthProvider")
+    throw new Error("useAuth must be used within AuthProvider");
   }
-  return context
+  return context;
 }

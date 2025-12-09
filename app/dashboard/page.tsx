@@ -7,18 +7,19 @@ import { DashboardLayout } from "@/components/dashboard/layout"
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
 
-  // useEffect(() => {
-  //   // Protect route - redirect to login if not authenticated
-  //   if (user === null) {
-  //     router.push("/")
-  //   }
-  // }, [user, router])
+  useEffect(() => {
+    // Protege a rota: se já terminou o carregamento e não há usuário, redireciona
+    if (!isLoading && user === null) {
+      router.replace("/")
+    }
+  }, [isLoading, user, router])
 
-  // if (!user) {
-  //   return null
-  // }
+  // enquanto carrega ou se já redirecionou, não renderiza o conteúdo
+  if (isLoading || user === null) {
+    return null
+  }
 
   return <DashboardLayout />
 }

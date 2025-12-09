@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useMedia } from "@/contexts/media-context"
+import { apiFetch } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 export function ProfileSettings() {
   const { user, updateProfile } = useAuth()
@@ -14,12 +16,34 @@ export function ProfileSettings() {
   const [username, setUsername] = useState(user?.username || "")
   const [bio, setBio] = useState(user?.bio || "")
   const [isSaving, setIsSaving] = useState(false)
+  const { toast } = useToast()
+  const MAX_BIO_LENGTH = 300
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      updateProfile({ username, bio })
-      // Toast notification would go here
+      // client-side validation
+      if (bio && bio.length > MAX_BIO_LENGTH) {
+        toast({ title: "Bio muito longa", description: `Máximo ${MAX_BIO_LENGTH} caracteres.`, variant: "destructive" })
+        setIsSaving(false)
+        return
+      }
+
+      // persist changes to backend
+      try {
+        const updated = await apiFetch("/users/me", {
+          method: "PUT",
+          body: JSON.stringify({ full_name: username, bio }),
+        })
+
+        // update local auth state with normalized fields
+        updateProfile({ username: updated.full_name || updated.email.split("@")[0], bio: updated.bio ?? null })
+
+        toast({ title: "Perfil atualizado", description: "Alterações salvas com sucesso." })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        toast({ title: "Erro ao salvar", description: msg || "Não foi possível salvar as alterações.", variant: "destructive" })
+      }
     } finally {
       setIsSaving(false)
     }

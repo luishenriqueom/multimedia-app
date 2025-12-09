@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useMedia } from "@/contexts/media-context"
+import { apiFetch } from "@/lib/api"
 
 export function ProfileSettings() {
   const { user, updateProfile } = useAuth()
@@ -18,7 +19,17 @@ export function ProfileSettings() {
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      updateProfile({ username, bio })
+      // persist changes to backend
+      const updated = await apiFetch("/users/me", {
+        method: "PUT",
+        body: JSON.stringify({ full_name: username, bio }),
+      })
+
+      // normalize and update local auth state
+      updateProfile({
+        username: updated.full_name || updated.email.split("@")[0],
+        bio: updated.bio ?? null,
+      })
       // Toast notification would go here
     } finally {
       setIsSaving(false)

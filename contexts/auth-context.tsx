@@ -65,9 +65,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     try {
+      // OAuth2PasswordRequestForm expects form-urlencoded data
+      const params = new URLSearchParams();
+      params.append("username", email);
+      params.append("password", password);
       const data = await apiFetch("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: params,
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
       const token = data?.access_token;
       if (!token) throw new Error("No token received");

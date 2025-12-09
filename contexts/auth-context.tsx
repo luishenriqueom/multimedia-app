@@ -24,7 +24,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, username: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => void;
 }
 
@@ -105,9 +105,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [login]
   );
 
-  const logout = useCallback(() => {
-    setToken(null);
-    setUser(null);
+  const logout = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // try to revoke session/token on the server; ignore errors
+      try {
+        await apiFetch("/auth/logout", { method: "POST" });
+      } catch (err) {
+        // ignore server-side errors — we'll still clear client-side state
+      }
+
+      // clear client-side token and user state
+      setToken(null);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const updateProfile = useCallback((updates: Partial<User>) => {

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import {
@@ -23,8 +24,15 @@ export function DashboardLayout() {
   const [currentView, setCurrentView] = useState<View>("gallery")
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
-  const handleLogout = () => {
-    logout()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } finally {
+      // ensure navigation back to the login/landing page
+      router.replace("/")
+    }
   }
 
   return (

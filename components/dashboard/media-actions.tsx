@@ -22,6 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Edit2, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface MediaActionsProps {
   readonly media: MediaItem;
@@ -38,7 +39,8 @@ export function MediaActions({ media }: MediaActionsProps) {
     media.description || ""
   );
   const [editGenero, setEditGenero] = useState("");
-  const [tagsInput, setTagsInput] = useState("");
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
 
   // Load full media details when edit dialog opens
   useEffect(() => {
@@ -57,7 +59,8 @@ export function MediaActions({ media }: MediaActionsProps) {
 
           if (details) {
             setEditDescription(details.description || "");
-            setTagsInput((details.tags || []).join(", "));
+            setEditTags(details.tags || []);
+            setTagInput("");
             if (media.type === "video" || media.type === "audio") {
               setEditGenero(details.genero || "");
             }
@@ -73,7 +76,8 @@ export function MediaActions({ media }: MediaActionsProps) {
       // Reset state when dialog closes
       setIsLoadingDetails(false);
       setEditDescription(media.description || "");
-      setTagsInput("");
+      setEditTags([]);
+      setTagInput("");
       setEditGenero("");
     }
   }, [isEditOpen, media.id, media.type, media.description]);
@@ -82,10 +86,7 @@ export function MediaActions({ media }: MediaActionsProps) {
     setIsUpdating(true);
     try {
       // Parse tags from input string
-      const tagsArray = tagsInput
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter((tag) => tag.length > 0);
+      const tagsArray = editTags;
 
       // Call appropriate update function based on media type
       if (media.type === "image") {
@@ -205,16 +206,39 @@ export function MediaActions({ media }: MediaActionsProps) {
                 <label htmlFor="edit-tags" className="text-sm font-medium">
                   Tags
                 </label>
-                <Input
-                  id="edit-tags"
-                  value={tagsInput}
-                  onChange={(e) => setTagsInput(e.target.value)}
-                  placeholder="Tags separadas por vírgula (ex: tag1, tag2, tag3)"
-                  className="mt-2"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Separe múltiplas tags com vírgulas
-                </p>
+                <div className="flex flex-col gap-2 mt-2">
+                  <Input
+                    id="edit-tags"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.key === "," || e.key === "Enter") && tagInput.trim().length > 0) {
+                        e.preventDefault();
+                        if (!editTags.includes(tagInput.trim())) {
+                          setEditTags([...editTags, tagInput.trim()]);
+                        }
+                        setTagInput("");
+                      }
+                    }}
+                    placeholder="Adicionar tag e pressionar Enter ou vírgula"
+                    className="mt-0"
+                    disabled={isUpdating}
+                  />
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {editTags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="flex items-center gap-1 pr-1">
+                        {tag}
+                        <button
+                          onClick={() => setEditTags(editTags.filter((t) => t !== tag))}
+                          className="ml-1 text-xs text-red-600 hover:text-red-800 font-bold px-1 rounded focus:outline-none"
+                          tabIndex={-1}
+                          type="button"
+                          disabled={isUpdating}
+                        >×</button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </div>
               <Button
                 onClick={handleUpdate}

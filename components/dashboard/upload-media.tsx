@@ -42,6 +42,7 @@ export function UploadMedia() {
   const [currentUploadIndex, setCurrentUploadIndex] = useState<number | null>(
     null
   );
+  const [tagInputValues, setTagInputValues] = useState<Record<string, string>>({});
 
   const getFileType = (file: File): FileType => {
     if (file.type.startsWith("image/")) return "image";
@@ -202,6 +203,29 @@ export function UploadMedia() {
   const pendingFiles = queuedFiles.filter((f) => f.status === "pending");
   const hasPendingFiles = pendingFiles.length > 0;
 
+  // Adiciona tag ao pressionar vírgula ou Enter
+  const handleTagInput = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    id: string,
+    tags: string[]
+  ) => {
+    if (e.key === "," || e.key === "Enter") {
+      e.preventDefault();
+      const value = tagInputValues[id]?.trim();
+      if (value && !tags.includes(value)) {
+        updateFileMetadata(id, { tags: [...tags, value] });
+        setTagInputValues((prev) => ({ ...prev, [id]: "" }));
+      }
+    }
+  };
+
+  const handleTagInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    id: string
+  ) => {
+    setTagInputValues((prev) => ({ ...prev, [id]: e.target.value }));
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -361,12 +385,10 @@ export function UploadMedia() {
                         </Label>
                         <Input
                           id={`tags-${id}`}
-                          placeholder="Separe múltiplas tags com vírgulas (ex: tag1, tag2, tag3)"
-                          value={tagsInput}
-                          onChange={(e) => {
-                            const tags = parseTags(e.target.value);
-                            updateFileMetadata(id, { tags });
-                          }}
+                          placeholder="Separe múltiplas tags com vírgula ou Enter (ex: tag1, tag2, tag3)"
+                          value={tagInputValues[id] || ""}
+                          onChange={(e) => handleTagInputChange(e, id)}
+                          onKeyDown={(e) => handleTagInput(e, id, metadata.tags)}
                           className="h-8 text-sm"
                           disabled={isUploading}
                         />
@@ -376,9 +398,22 @@ export function UploadMedia() {
                               <Badge
                                 key={`${id}-tag-${tag}`}
                                 variant="secondary"
-                                className="text-xs"
+                                className="text-xs flex items-center gap-1 pr-1"
                               >
                                 {tag}
+                                <button
+                                  onClick={() => {
+                                    updateFileMetadata(id, {
+                                      tags: metadata.tags.filter((t) => t !== tag),
+                                    });
+                                  }}
+                                  disabled={isUploading}
+                                  className="ml-1 text-xs text-red-600 hover:text-red-800 font-bold px-1 rounded focus:outline-none"
+                                  tabIndex={-1}
+                                  type="button"
+                                >
+                                  ×
+                                </button>
                               </Badge>
                             ))}
                           </div>

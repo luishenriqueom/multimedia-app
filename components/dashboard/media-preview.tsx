@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useMedia } from "@/contexts/media-context";
 import type { MediaItem } from "@/contexts/media-context";
 import {
@@ -113,6 +113,8 @@ export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
     "url_480" | "url_720" | "url_1080" | null
   >(null);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const lastTimeRef = useRef<number>(0);
 
   useEffect(() => {
     if (!media) return;
@@ -168,6 +170,35 @@ export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
       ? undefined
       : format(date, "Pp", { locale: ptBR });
   }, [detail]);
+
+  const handleResolutionChange = (
+    value: "url_480" | "url_720" | "url_1080"
+  ) => {
+    // Se já está em uma resolução e vídeo existe, salva o tempo atual
+    if (media?.type === "video" && videoRef.current) {
+      lastTimeRef.current = videoRef.current.currentTime;
+    }
+    setSelectedResolution(value);
+    if (detail && "url_480" in detail) {
+      setMediaUrl((detail as VideoDetail)[value] || undefined);
+    }
+  };
+
+  // Quando o mediaUrl mudar e for vídeo, tenta restaurar a posição
+  useEffect(() => {
+    if (media?.type !== "video" || !videoRef.current) return;
+    const videoElem = videoRef.current;
+    const handleLoaded = () => {
+      // Só reposiciona se maior que zero e menor que duração
+      if (lastTimeRef.current > 0 && lastTimeRef.current < (videoElem.duration || Infinity)) {
+        videoElem.currentTime = lastTimeRef.current;
+      }
+    };
+    videoElem.addEventListener("loadedmetadata", handleLoaded);
+    return () => {
+      videoElem.removeEventListener("loadedmetadata", handleLoaded);
+    };
+  }, [mediaUrl, media?.type]);
 
   if (!media) return null;
 
@@ -232,6 +263,7 @@ export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
       return mediaUrl ? (
         <div className="flex w-full flex-col gap-3">
           <video
+            ref={videoRef}
             controls
             className="max-h-[70vh] w-full rounded-lg bg-black object-contain"
           >
@@ -243,12 +275,7 @@ export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
             <span className="text-sm text-muted-foreground">Resolução:</span>
             <Select
               value={selectedResolution ?? undefined}
-              onValueChange={(value: "url_480" | "url_720" | "url_1080") => {
-                setSelectedResolution(value);
-                if (detail && "url_480" in detail) {
-                  setMediaUrl((detail as VideoDetail)[value] || undefined);
-                }
-              }}
+              onValueChange={handleResolutionChange}
             >
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="Escolher" />

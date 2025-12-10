@@ -1,18 +1,39 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useMedia } from "@/contexts/media-context"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
 interface MediaPreviewProps {
-  mediaId: string
+  mediaId: number
   onClose: () => void
 }
 
 export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
-  const { getMedia } = useMedia()
+  const { getMedia, getMediaUrl } = useMedia()
   const media = getMedia(mediaId)
+  const [mediaUrl, setMediaUrl] = useState<string | undefined>(undefined)
+  const [isLoadingUrl, setIsLoadingUrl] = useState(false)
+
+  useEffect(() => {
+    if (media && !media.url) {
+      setIsLoadingUrl(true)
+      getMediaUrl(media.id)
+        .then((url) => {
+          setMediaUrl(url)
+        })
+        .catch((err) => {
+          console.error("Erro ao obter URL da mídia", err)
+        })
+        .finally(() => {
+          setIsLoadingUrl(false)
+        })
+    } else if (media?.url) {
+      setMediaUrl(media.url)
+    }
+  }, [media, getMediaUrl])
 
   if (!media) return null
 
@@ -20,21 +41,26 @@ export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>{media.title}</DialogTitle>
+          <DialogTitle>{media.filename}</DialogTitle>
         </DialogHeader>
         <div className="relative">
-          {media.type === "image" && (
-            <img src={media.url || "/placeholder.svg"} alt={media.title} className="w-full h-auto rounded-lg" />
+          {isLoadingUrl && (
+            <div className="flex items-center justify-center h-64">
+              <p className="text-muted-foreground">Carregando...</p>
+            </div>
           )}
-          {media.type === "audio" && (
+          {!isLoadingUrl && media.type === "image" && (
+            <img src={mediaUrl || "/placeholder.svg"} alt={media.filename} className="w-full h-auto rounded-lg" />
+          )}
+          {!isLoadingUrl && media.type === "audio" && mediaUrl && (
             <audio controls className="w-full">
-              <source src={media.url} type="audio/mpeg" />
+              <source src={mediaUrl} type="audio/mpeg" />
               Seu navegador não suporta o elemento de áudio.
             </audio>
           )}
-          {media.type === "video" && (
+          {!isLoadingUrl && media.type === "video" && mediaUrl && (
             <video controls className="w-full h-auto rounded-lg">
-              <source src={media.url} type="video/mp4" />
+              <source src={mediaUrl} type="video/mp4" />
               Seu navegador não suporta o elemento de vídeo.
             </video>
           )}

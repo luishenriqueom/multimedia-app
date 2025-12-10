@@ -4,15 +4,15 @@ import type React from "react"
 
 import { useState } from "react"
 import { useMedia } from "@/contexts/media-context"
+import { uploadMedia } from "@/hooks/use-media"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, X } from "lucide-react"
 
 export function UploadMedia() {
-  const { addMedia } = useMedia()
+  const { refreshMedia } = useMedia()
   const [files, setFiles] = useState<File[]>([])
-  const [titles, setTitles] = useState<Record<string, string>>({})
   const [descriptions, setDescriptions] = useState<Record<string, string>>({})
   const [isUploading, setIsUploading] = useState(false)
 
@@ -39,43 +39,25 @@ export function UploadMedia() {
     try {
       for (const file of files) {
         const fileType = getFileType(file)
-        if (!fileType) continue
-
-        // Create FormData for file upload
-        const formData = new FormData()
-        formData.append("file", file)
-
-        // Upload to Blob
-        const uploadResponse = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        })
-
-        if (!uploadResponse.ok) {
-          console.error("Upload failed for", file.name)
+        if (!fileType) {
+          console.warn("Tipo de arquivo não suportado:", file.name)
           continue
         }
 
-        const { url } = await uploadResponse.json()
-
-        // Add to media context
-        const newMedia = {
-          id: Date.now().toString() + Math.random(),
-          title: titles[file.name] || file.name.split(".")[0],
-          description: descriptions[file.name] || "",
-          type: fileType,
-          url,
-          fileSize: file.size,
-          uploadedAt: new Date(),
-          updatedAt: new Date(),
+        try {
+          const description = descriptions[file.name] || undefined
+          await uploadMedia(file, { description })
+        } catch (error) {
+          console.error("Erro ao fazer upload de", file.name, error)
+          // Continue with next file even if one fails
         }
-
-        addMedia(newMedia)
       }
+
+      // Refresh media list from API
+      await refreshMedia()
 
       // Clear after upload
       setFiles([])
-      setTitles({})
       setDescriptions({})
     } finally {
       setIsUploading(false)
@@ -118,17 +100,6 @@ export function UploadMedia() {
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                <Input
-                  placeholder="Título"
-                  value={titles[file.name] || ""}
-                  onChange={(e) =>
-                    setTitles((prev) => ({
-                      ...prev,
-                      [file.name]: e.target.value,
-                    }))
-                  }
-                  className="h-8"
-                />
                 <Input
                   placeholder="Descrição (opcional)"
                   value={descriptions[file.name] || ""}

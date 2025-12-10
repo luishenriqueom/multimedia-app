@@ -17,12 +17,12 @@ export function MediaGallery() {
   const [searchQuery, setSearchQuery] = useState("")
   const [filterType, setFilterType] = useState<FilterType>("all")
   const [viewMode, setViewMode] = useState<ViewMode>("grid")
-  const [selectedMedia, setSelectedMedia] = useState<string | null>(null)
+  const [selectedMedia, setSelectedMedia] = useState<number | null>(null)
 
   const filteredItems = useMemo(() => {
     return mediaItems.filter((item) => {
       const matchesSearch =
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
       const matchesType = filterType === "all" || item.type === filterType
       return matchesSearch && matchesType
@@ -157,7 +157,7 @@ export function MediaGallery() {
                       {item.thumbnail ? (
                         <img
                           src={item.thumbnail || "/placeholder.svg"}
-                          alt={item.title}
+                          alt={item.filename}
                           className="w-full h-full object-cover hover:scale-105 transition-transform"
                         />
                       ) : (
@@ -168,7 +168,7 @@ export function MediaGallery() {
                       )}
                     </div>
                     <div className="p-3 space-y-2">
-                      <p className="font-medium truncate text-sm">{item.title}</p>
+                      <p className="font-medium truncate text-sm">{item.filename}</p>
                       {item.description && (
                         <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
                       )}
@@ -199,7 +199,7 @@ export function MediaGallery() {
                         {item.thumbnail ? (
                           <img
                             src={item.thumbnail || "/placeholder.svg"}
-                            alt={item.title}
+                            alt={item.filename}
                             className="h-16 w-16 object-cover rounded"
                           />
                         ) : (
@@ -209,7 +209,7 @@ export function MediaGallery() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{item.title}</p>
+                        <p className="font-medium truncate">{item.filename}</p>
                         {item.description && (
                           <p className="text-sm text-muted-foreground line-clamp-1">{item.description}</p>
                         )}

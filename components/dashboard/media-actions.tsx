@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useMedia } from "@/contexts/media-context"
 import type { MediaItem } from "@/contexts/media-context"
+import { updateImage, updateVideo, updateAudio } from "@/hooks/use-media"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -20,23 +21,48 @@ interface MediaActionsProps {
 }
 
 export function MediaActions({ media }: MediaActionsProps) {
-  const { updateMedia, deleteMedia } = useMedia()
+  const { updateMedia, deleteMedia, refreshMedia } = useMedia()
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const [editTitle, setEditTitle] = useState(media.title)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [editDescription, setEditDescription] = useState(media.description || "")
 
-  const handleUpdate = () => {
-    updateMedia(media.id, {
-      title: editTitle,
-      description: editDescription,
-    })
-    setIsEditOpen(false)
+  const handleUpdate = async () => {
+    setIsUpdating(true)
+    try {
+      const updates = { description: editDescription || undefined }
+      
+      // Call appropriate update function based on media type
+      if (media.type === "image") {
+        await updateImage(media.id, updates)
+      } else if (media.type === "video") {
+        await updateVideo(media.id, updates)
+      } else if (media.type === "audio") {
+        await updateAudio(media.id, updates)
+      }
+      
+      // Update local state
+      updateMedia(media.id, { description: editDescription })
+      setIsEditOpen(false)
+    } catch (error) {
+      console.error("Erro ao atualizar mídia", error)
+      alert("Erro ao atualizar mídia. Tente novamente.")
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
-  const handleDelete = () => {
-    deleteMedia(media.id)
-    setIsDeleteOpen(false)
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      await deleteMedia(media.id)
+      setIsDeleteOpen(false)
+    } catch (error) {
+      console.error("Erro ao deletar mídia", error)
+      alert("Erro ao deletar mídia. Tente novamente.")
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -52,12 +78,12 @@ export function MediaActions({ media }: MediaActionsProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Editar Arquivo</DialogTitle>
-            <DialogDescription>Atualize o título e descrição do arquivo</DialogDescription>
+            <DialogDescription>Atualize a descrição do arquivo</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Título</label>
-              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="mt-2" />
+              <label className="text-sm font-medium">Nome do arquivo</label>
+              <Input value={media.filename} disabled className="mt-2 bg-muted" />
             </div>
             <div>
               <label className="text-sm font-medium">Descrição</label>
@@ -68,8 +94,8 @@ export function MediaActions({ media }: MediaActionsProps) {
                 className="mt-2"
               />
             </div>
-            <Button onClick={handleUpdate} className="w-full">
-              Salvar
+            <Button onClick={handleUpdate} disabled={isUpdating} className="w-full">
+              {isUpdating ? "Salvando..." : "Salvar"}
             </Button>
           </div>
         </DialogContent>
@@ -91,11 +117,11 @@ export function MediaActions({ media }: MediaActionsProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsDeleteOpen(false)} className="flex-1">
+            <Button variant="outline" onClick={() => setIsDeleteOpen(false)} disabled={isDeleting} className="flex-1">
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDelete} className="flex-1">
-              Deletar
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting} className="flex-1">
+              {isDeleting ? "Deletando..." : "Deletar"}
             </Button>
           </div>
         </DialogContent>

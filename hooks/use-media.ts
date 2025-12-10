@@ -12,6 +12,18 @@ export async function getMedia(mediaId: number) {
   return apiFetch(`/media/${mediaId}`, { method: "GET" });
 }
 
+export async function getImage(mediaId: number) {
+  return apiFetch(`/media/image/${mediaId}`, { method: "GET" });
+}
+
+export async function getVideo(mediaId: number) {
+  return apiFetch(`/media/video/${mediaId}`, { method: "GET" });
+}
+
+export async function getAudio(mediaId: number) {
+  return apiFetch(`/media/audio/${mediaId}`, { method: "GET" });
+}
+
 export async function getMediaPresignedUrl(mediaId: number) {
   return apiFetch(`/media/${mediaId}/url`, { method: "GET" });
 }

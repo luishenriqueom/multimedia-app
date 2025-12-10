@@ -176,7 +176,7 @@ export function MediaGallery() {
                         <span>{(item.fileSize / 1024 / 1024).toFixed(2)} MB</span>
                         <span>{item.uploadedAt.toLocaleDateString("pt-BR")}</span>
                       </div>
-                      <div className="pt-2 border-t border-border">
+                      <div className="pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
                         <MediaActions media={item} />
                       </div>
                     </div>
@@ -219,7 +219,7 @@ export function MediaGallery() {
                           <span>{item.uploadedAt.toLocaleDateString("pt-BR")}</span>
                         </div>
                       </div>
-                      <div className="flex-shrink-0">
+                      <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                         <MediaActions media={item} />
                       </div>
                     </div>

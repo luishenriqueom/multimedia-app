@@ -100,14 +100,7 @@ export function DashboardLayout() {
               <div className="px-2 py-1.5">
                 <p className="text-xs font-medium text-muted-foreground">{user?.email}</p>
               </div>
-              <DropdownMenuSeparator />
-              <div className="px-2">
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleQuickUploadChange} />
-                <DropdownMenuItem onClick={handleQuickUploadClick} className="gap-2">
-                  <UserIcon className="h-4 w-4" />
-                  Alterar foto
-                </DropdownMenuItem>
-              </div>
+          
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setCurrentView("profile")} className="gap-2">
                 <Settings className="h-4 w-4" />

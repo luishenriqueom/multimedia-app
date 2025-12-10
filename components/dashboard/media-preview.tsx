@@ -2,6 +2,8 @@
 
 import { useMedia } from "@/contexts/media-context"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { format } from "date-fns"
+import { ptBR } from "date-fns/locale"
 
 interface MediaPreviewProps {
   mediaId: string
@@ -37,7 +39,27 @@ export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
             </video>
           )}
         </div>
-        {media.description && <p className="mt-4 text-sm text-muted-foreground">{media.description}</p>}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            {media.description && <p className="text-sm text-muted-foreground">{media.description}</p>}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            <div className="flex justify-between">
+              <span className="font-medium">Tamanho:</span>
+              <span>{(media.fileSize / 1024 / 1024).toFixed(2)} MB</span>
+            </div>
+            {media.duration !== undefined && (
+              <div className="flex justify-between">
+                <span className="font-medium">Duração:</span>
+                <span>{Math.floor(media.duration / 60)}:{String(media.duration % 60).padStart(2, "0")}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="font-medium">Enviado:</span>
+              <span>{format(new Date(media.uploadedAt), "Pp", { locale: ptBR })}</span>
+            </div>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   )

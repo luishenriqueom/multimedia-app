@@ -1,0 +1,16 @@
+[
+  {
+    "filename": "aaaa.jpg",
+    "size": 100,
+    "mime_type": "image/jpg",
+    "thumbnail": "https://placehold.co/400x225.jpg",
+    "created_at": "2025-12-01T10:00:00Z"
+  },
+  {
+    "filename": "aaaa.mp4",
+    "size": 100,
+    "mime_type": "video/mp4",
+    "thumbnail": "https://placehold.co/400x225.png?text=Video+Thumb",
+    "created_at": "2025-12-02T14:30:00Z"
+  }
+]

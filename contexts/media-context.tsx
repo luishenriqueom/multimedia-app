@@ -2,6 +2,9 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useCallback } from "react"
+import { MOCK_MEDIA } from "../mock/media-mock"
+import apiMock from "../mock/media-api-mock.json"
+import { mapApiPayloadToMediaItems } from "../mock/api-to-media"
 
 export interface MediaItem {
   id: string
@@ -23,13 +26,26 @@ interface MediaContextType {
   updateMedia: (id: string, updates: Partial<MediaItem>) => void
   deleteMedia: (id: string) => void
   getMedia: (id: string) => MediaItem | undefined
+  // Carrega dados do formato da API (útil para substituir o mock no futuro)
+  loadFromApiMock: () => void
 }
 
 const MediaContext = createContext<MediaContextType | undefined>(undefined)
 
 export function MediaProvider({ children }: { children: React.ReactNode }) {
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
+  // Inicializa com mock local para facilitar desenvolvimento do dashboard
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>(MOCK_MEDIA)
   const [isLoading] = useState(false)
+
+  const loadFromApiMock = useCallback(() => {
+    try {
+      const mapped = mapApiPayloadToMediaItems(apiMock as any)
+      setMediaItems(mapped)
+    } catch (err) {
+      // fallback: mantemos o mock TS
+      console.error("Erro ao mapear mock da API", err)
+    }
+  }, [])
 
   const addMedia = useCallback((media: MediaItem) => {
     setMediaItems((prev) => [media, ...prev])
@@ -53,7 +69,9 @@ export function MediaProvider({ children }: { children: React.ReactNode }) {
   )
 
   return (
-    <MediaContext.Provider value={{ mediaItems, isLoading, addMedia, updateMedia, deleteMedia, getMedia }}>
+    <MediaContext.Provider
+      value={{ mediaItems, isLoading, addMedia, updateMedia, deleteMedia, getMedia, loadFromApiMock }}
+    >
       {children}
     </MediaContext.Provider>
   )

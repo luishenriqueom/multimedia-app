@@ -14,6 +14,7 @@ export interface User {
   id: number | string;
   email: string;
   username?: string;
+  fullName?: string;
   avatar?: string;
   bio?: string | null;
   createdAt?: Date;
@@ -45,8 +46,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const normalized: User = {
           id: me.id,
           email: me.email,
-          username: me.full_name || me.email.split("@")[0],
+          // prefer explicit username returned by API, fallback to full_name or email localpart
+          username: me.username ?? me.full_name ?? me.email.split("@")[0],
+          fullName: me.full_name ?? undefined,
           bio: me.bio ?? null,
+          avatar: me.avatar_url ?? undefined,
           createdAt: me.created_at ? new Date(me.created_at) : undefined,
         };
         setUser(normalized);
@@ -82,8 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const normalized: User = {
         id: me.id,
         email: me.email,
-        username: me.full_name || me.email.split("@")[0],
+        username: me.username ?? me.full_name ?? me.email.split("@")[0],
+        fullName: me.full_name ?? undefined,
         bio: me.bio ?? null,
+        avatar: me.avatar_url ?? undefined,
         createdAt: me.created_at ? new Date(me.created_at) : undefined,
       };
       setUser(normalized);

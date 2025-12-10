@@ -1,9 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { uploadImage } from "@/hooks/use-media"
+import { useToast } from "@/hooks/use-toast"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +18,8 @@ import { Sidebar } from "./sidebar"
 import { MediaGallery } from "./media-gallery"
 import { UploadMedia } from "./upload-media"
 import { ProfileSettings } from "./profile-settings"
-import { Menu, LogOut, Settings } from "lucide-react"
+import { Menu, LogOut, Settings, User as UserIcon } from "lucide-react"
+import { apiFetch } from "@/lib/api"
 
 type View = "gallery" | "upload" | "profile"
 
@@ -32,6 +36,28 @@ export function DashboardLayout() {
     } finally {
       // ensure navigation back to the login/landing page
       router.replace("/")
+    }
+  }
+
+  // Quick upload for avatar from header dropdown
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const { toast } = useToast()
+  const handleQuickUploadClick = () => fileInputRef.current?.click()
+  const handleQuickUploadChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      await uploadImage(file, { is_profile: true })
+      const me = await apiFetch("/users/me", { method: "GET" })
+      // update auth context via window event or reload — we have useAuth here
+      // but updateProfile is not available in this component; instead trigger a small reload
+      // We'll use a simple approach: replace location to force client to refresh user data in context
+      toast({ title: "Avatar atualizado", description: "Sua foto de perfil foi atualizada." })
+      // trigger a soft reload of the page so context reloads user
+      window.location.reload()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      toast({ title: "Erro ao enviar avatar", description: msg || "Não foi possível enviar a imagem.", variant: "destructive" })
     }
   }
 
@@ -54,17 +80,33 @@ export function DashboardLayout() {
 
           {/* User Menu */}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2 bg-transparent">
-                <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-sm">
-                  {user?.username?.charAt(0).toUpperCase()}
-                </div>
-                {user?.username}
-              </Button>
-            </DropdownMenuTrigger>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2 bg-transparent">
+                  <div className="h-6 w-6">
+                    <Avatar className="h-6 w-6">
+                      {user?.avatar ? (
+                        <AvatarImage src={user.avatar} alt={user.username || "avatar"} />
+                      ) : (
+                        <AvatarFallback className="text-sm bg-muted text-foreground">
+                          {user?.username?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                  </div>
+                  {user?.username}
+                </Button>
+              </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <div className="px-2 py-1.5">
                 <p className="text-xs font-medium text-muted-foreground">{user?.email}</p>
+              </div>
+              <DropdownMenuSeparator />
+              <div className="px-2">
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleQuickUploadChange} />
+                <DropdownMenuItem onClick={handleQuickUploadClick} className="gap-2">
+                  <UserIcon className="h-4 w-4" />
+                  Alterar foto
+                </DropdownMenuItem>
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setCurrentView("profile")} className="gap-2">
@@ -86,7 +128,7 @@ export function DashboardLayout() {
         {/* Sidebar */}
         {isSidebarOpen && (
           <aside className="hidden lg:block w-56 border-r border-border bg-card/50">
-            <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
+            <Sidebar currentView={currentView} setCurrentView={(v: string) => setCurrentView(v as View)} />
           </aside>
         )}
 
@@ -104,9 +146,9 @@ export function DashboardLayout() {
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden bg-black/50" onClick={() => setIsSidebarOpen(false)}>
           <aside className="absolute left-0 top-0 h-full w-56 bg-card border-r border-border">
-            <div className="mt-4">
-              <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
-            </div>
+              <div className="mt-4">
+                <Sidebar currentView={currentView} setCurrentView={(v: string) => setCurrentView(v as View)} />
+              </div>
           </aside>
         </div>
       )}

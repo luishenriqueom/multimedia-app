@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMedia } from "@/contexts/media-context";
+import type { MediaItem } from "@/contexts/media-context";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Download, Tag as TagIcon, Clock3, Maximize2 } from "lucide-react";
 
 interface MediaPreviewProps {
   mediaId: number;
@@ -89,6 +95,12 @@ const formatDuration = (seconds?: number | null) => {
   return `${mins}:${String(secs).padStart(2, "0")}`;
 };
 
+const typeLabel: Record<MediaItem["type"], string> = {
+  image: "Imagem",
+  audio: "Áudio",
+  video: "Vídeo",
+};
+
 export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
   const { getMedia } = useMedia();
   const media = getMedia(mediaId);
@@ -100,6 +112,7 @@ export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
   const [selectedResolution, setSelectedResolution] = useState<
     "url_480" | "url_720" | "url_1080" | null
   >(null);
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   useEffect(() => {
     if (!media) return;
@@ -161,8 +174,13 @@ export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
   const renderPlayer = () => {
     if (isLoading) {
       return (
-        <div className="flex h-[60vh] items-center justify-center rounded-lg bg-muted/40 text-sm text-muted-foreground">
-          Carregando...
+        <div className="flex h-[60vh] flex-col gap-3 rounded-lg bg-muted/40 p-4">
+          <Skeleton className="h-full w-full rounded-md" />
+          <div className="grid grid-cols-3 gap-3">
+            <Skeleton className="h-4" />
+            <Skeleton className="h-4" />
+            <Skeleton className="h-4" />
+          </div>
         </div>
       );
     }
@@ -177,11 +195,21 @@ export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
 
     if (media.type === "image") {
       return (
-        <img
-          src={mediaUrl || "/placeholder.svg"}
-          alt={media.filename}
-          className="max-h-[70vh] w-full rounded-lg object-contain"
-        />
+        <button
+          type="button"
+          onClick={() => setIsZoomOpen(true)}
+          className="group relative flex h-[70vh] w-full items-center justify-center overflow-hidden rounded-lg bg-black"
+        >
+          <img
+            src={mediaUrl || "/placeholder.svg"}
+            alt={media.filename}
+            className="max-h-full max-w-full object-contain transition-transform duration-200 group-hover:scale-[1.02]"
+          />
+          <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-black/60 px-3 py-1 text-xs text-white opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
+            <Maximize2 className="h-3.5 w-3.5" />
+            Ampliar
+          </div>
+        </button>
       );
     }
 
@@ -284,16 +312,60 @@ export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-7xl w-[96vw] max-h-[96vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="truncate">{media.filename}</DialogTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <DialogTitle className="truncate">{media.filename}</DialogTitle>
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <Badge variant="secondary">{typeLabel[media.type]}</Badge>
+                <span className="flex items-center gap-1">
+                  <Clock3 className="h-4 w-4" />
+                  {createdAt ??
+                    format(new Date(media.uploadedAt), "Pp", { locale: ptBR })}
+                </span>
+                {toMb(
+                  (detail as ImageDetail | VideoDetail | AudioDetail | null)
+                    ?.size ?? media.fileSize
+                ) && (
+                  <span>
+                    {toMb(
+                      (detail as
+                        | ImageDetail
+                        | VideoDetail
+                        | AudioDetail
+                        | null
+                      )?.size ?? media.fileSize
+                    )}{" "}
+                    MB
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {mediaUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(mediaUrl, "_blank")}
+                  className="gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Baixar/Abrir
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                Fechar
+              </Button>
+            </div>
+          </div>
         </DialogHeader>
         <div className="flex flex-col gap-6 md:flex-row">
-          <div className="flex-1 overflow-hidden rounded-lg border bg-background p-2">
+          <div className="flex-1 overflow-hidden rounded-lg border bg-gradient-to-b from-background to-muted/40 p-2">
             {renderPlayer()}
           </div>
           <div className="w-full min-w-[260px] max-w-sm space-y-4 md:w-80">
-            {media.description && (
-              <p className="text-sm text-muted-foreground">
-                {media.description}
+            {(media.description || detail?.description) && (
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {detail?.description ?? media.description}
               </p>
             )}
 
@@ -327,6 +399,7 @@ export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
                 (detail as ImageDetail | VideoDetail | AudioDetail | null)
                   ?.mimetype
               )}
+              <Separator className="my-3" />
               {media.type === "image" &&
                 renderInfoRow(
                   "Dimensões",
@@ -380,15 +453,22 @@ export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
                 "Gênero",
                 detail && "genero" in detail ? detail.genero : undefined
               )}
-              {renderInfoRow(
-                "Tags",
-                detail &&
-                  "tags" in detail &&
-                  detail.tags &&
-                  detail.tags.length > 0
-                  ? detail.tags.join(", ")
-                  : undefined
-              )}
+              {detail &&
+                "tags" in detail &&
+                detail.tags &&
+                detail.tags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Badge variant="outline" className="gap-1 text-xs">
+                      <TagIcon className="h-3 w-3" />
+                      Tags
+                    </Badge>
+                    {detail.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
             </div>
 
             {media.type === "image" &&
@@ -407,6 +487,23 @@ export function MediaPreview({ mediaId, onClose }: MediaPreviewProps) {
           </div>
         </div>
       </DialogContent>
+      {media.type === "image" && mediaUrl && isZoomOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-4">
+          <button
+            type="button"
+            onClick={() => setIsZoomOpen(false)}
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+            aria-label="Fechar zoom"
+          >
+            ✕
+          </button>
+          <img
+            src={mediaUrl}
+            alt={media.filename}
+            className="max-h-[calc(100vh-2rem)] max-w-[calc(100vw-2rem)] object-contain"
+          />
+        </div>
+      )}
     </Dialog>
   );
 }
